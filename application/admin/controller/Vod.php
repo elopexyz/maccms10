@@ -99,8 +99,8 @@ class Vod extends Base
 
         if(!empty($param['repeat'])){
             if($param['page'] ==1){
-                Db::query('DROP TABLE IF EXISTS '.config('database.prefix').'tmpvod');
-                Db::query('CREATE TABLE IF NOT EXISTS `'.config('database.prefix').'tmpvod` as (SELECT min(vod_id) as id1,vod_name as name1 FROM '.config('database.prefix').'vod GROUP BY name1 HAVING COUNT(name1)>1)');
+                Db::execute('DROP TABLE IF EXISTS '.config('database.prefix').'tmpvod');
+                Db::execute('CREATE TABLE IF NOT EXISTS `'.config('database.prefix').'tmpvod` as (SELECT min(vod_id) as id1,vod_name as name1 FROM '.config('database.prefix').'vod GROUP BY name1 HAVING COUNT(name1)>1)');
             }
             $order='vod_name asc';
             $res = model('Vod')->listRepeatData($where,$order,$param['page'],$param['limit']);
@@ -481,8 +481,15 @@ class Vod extends Base
         if(!empty($ids) && in_array($col,['vod_status','vod_lock','vod_level','vod_hits','type_id'])){
             $where=[];
             $where['vod_id'] = ['in',$ids];
+            $update = [];
             if(empty($start)) {
-                $res = model('Vod')->fieldData($where, $col, $val);
+                $update[$col] = $val;
+                if($col == 'type_id'){
+                    $type_list = model('Type')->getCache();
+                    $id1 = intval($type_list[$val]['type_pid']);
+                    $update['type_id_1'] = $id1;
+                }
+                $res = model('Vod')->fieldData($where, $update);
             }
             else{
                 if(empty($end)){$end = 9999;}
@@ -490,7 +497,8 @@ class Vod extends Base
                 foreach($ids as $k=>$v){
                     $val = rand($start,$end);
                     $where['vod_id'] = ['eq',$v];
-                    $res = model('Vod')->fieldData($where, $col, $val);
+                    $update[$col] = $val;
+                    $res = model('Vod')->fieldData($where, $update);
                 }
             }
             if($res['code']>1){
